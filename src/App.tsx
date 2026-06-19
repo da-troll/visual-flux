@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AudioEngine, type AudioFrame } from './audio';
+import { AudioEngine, type AudioFrame, type BeatPath } from './audio';
 import { MODE_LIST, type ModeId, renderMode, type ScratchState, type RenderContext } from './visualizers';
 import { PALETTES, PALETTE_BY_ID, lerpPalette, rgb, type Palette } from './palettes';
 import { encodeHash, decodeHash } from './permalink';
@@ -66,6 +66,19 @@ function App() {
 
   useEffect(() => { engine.setSmoothing(response); }, [response, engine]);
   useEffect(() => { engine.setMicSensitivity(micSens); }, [micSens, engine]);
+
+  // v1.9 A/B toggle for beat-detection latency. URL: ?beatpath=raw | smoothed.
+  // Default 'smoothed' (no regression vs v1.8). 'raw' reads onset detection
+  // off a dedicated smoothing=0 analyser — ~50-80ms tighter sync. Daniel A/Bs
+  // by ear. NOTE: 'raw' can OVERSHOOT to slightly early on low-latency wired
+  // setups (outputLatency already pulls flash early); expected, audible test.
+  useEffect(() => {
+    const qs = new URLSearchParams(window.location.search);
+    const bp = qs.get('beatpath');
+    if (bp === 'raw' || bp === 'smoothed') {
+      engine.setBeatPath(bp as BeatPath);
+    }
+  }, [engine]);
 
   // Resize handling for canvas aspect ratio
   useEffect(() => {

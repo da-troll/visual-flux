@@ -1,11 +1,26 @@
 // Web Audio engine.
 //
-// Beat detection (post-Daniel-simplification): direct bass-bin onset detection
-// on the display analyser. Same data that drives the leftmost bars also drives
-// the flash — by construction the flash cannot trigger from hi-hats and is
-// guaranteed in-sync with what's painted.
+// Beat detection (post-Daniel-simplification): direct bass-bin onset detection.
+//
+// v1.9 — DUAL-ANALYSER A/B PATH for onset detection:
+//   - 'smoothed' (default, v1.6-v1.8 behaviour): read bass bins from the
+//     displayAnalyser. Smoothing 0.8 introduces ~50-80ms of phase delay on
+//     transients but matches the painted bars perfectly.
+//   - 'raw' (NEW): read bass bins from a dedicated beatAnalyser with
+//     smoothingTimeConstant=0. Cuts the dominant latency contributor; the
+//     onset fires on the raw transient instead of the smoothed envelope.
+//
+// Switch at runtime via `engine.setBeatPath('raw' | 'smoothed')`. The display
+// bars are unaffected — they always read from displayAnalyser. Toggle exposed
+// in App.tsx via `?beatpath=raw|smoothed` query param.
+//
+// Watch: with smoothing=0 the flash arrives ~50-80ms earlier; combined with
+// AudioContext.outputLatency (which already pulls the flash slightly EARLY
+// relative to audible audio on low-latency wired setups), the corrected flash
+// can OVERSHOOT to slightly early. Daniel A/Bs by ear — expected.
 
 export type InputSource = 'idle' | 'file' | 'mic';
+export type BeatPath = 'smoothed' | 'raw';
 
 export interface AudioFrame {
   freq: Uint8Array;
@@ -37,6 +52,12 @@ const REFRACTORY_MS = 250;
 export class AudioEngine {
   ctx: AudioContext | null = null;
   displayAnalyser: AnalyserNode | null = null;
+  // Dedicated beat-detection analyser with smoothing=0 (v1.9). Reads same
+  // post-HPF signal as displayAnalyser. fftSize is kept at 2048 so bass-bin
+  // indices (3..9) and thresholds carry over unchanged from the smoothed path.
+  beatAnalyser: AnalyserNode | null = null;
+  beatFreq = new Uint8Array(FFT_SIZE / 2);
+  beatPath: BeatPath = 'smoothed';
   gain: GainNode | null = null;
   hpf: BiquadFilterNode | null = null;
   source: AudioBufferSourceNode | MediaStreamAudioSourceNode | MediaElementAudioSourceNode | null = null;
@@ -70,6 +91,15 @@ export class AudioEngine {
       this.displayAnalyser.minDecibels = DISPLAY_MIN_DB;
       this.displayAnalyser.maxDecibels = DISPLAY_MAX_DB;
 
+      // Beat-detection analyser: zero smoothing so transients aren't averaged
+      // away before the rising-edge detector sees them. Same fftSize / dB
+      // range as display so bass-bin indices are identical.
+      this.beatAnalyser = this.ctx.createAnalyser();
+      this.beatAnalyser.fftSize = FFT_SIZE;
+      this.beatAnalyser.smoothingTimeConstant = 0;
+      this.beatAnalyser.minDecibels = DISPLAY_MIN_DB;
+      this.beatAnalyser.maxDecibels = DISPLAY_MAX_DB;
+
       this.hpf = this.ctx.createBiquadFilter();
       this.hpf.type = 'highpass';
       this.hpf.frequency.value = 30;
@@ -77,6 +107,10 @@ export class AudioEngine {
 
       this.gain.connect(this.hpf);
       this.hpf.connect(this.displayAnalyser);
+      // Tap the same post-HPF signal into the beat analyser. Doesn't affect
+      // playback — analysers are pass-through and beatAnalyser has no
+      // downstream connection.
+      this.hpf.connect(this.beatAnalyser);
       this.displayAnalyser.connect(this.ctx.destination);
     }
   }
@@ -84,6 +118,13 @@ export class AudioEngine {
   setSmoothing(v: number) {
     this.smoothing = v;
     if (this.displayAnalyser) this.displayAnalyser.smoothingTimeConstant = v;
+    // beatAnalyser smoothing intentionally stays at 0 regardless of the
+    // user-adjustable "response" slider — the slider tunes the look of the
+    // bars, not the onset latency.
+  }
+
+  setBeatPath(p: BeatPath) {
+    this.beatPath = p;
   }
 
   setMicSensitivity(v: number) {
@@ -155,6 +196,10 @@ export class AudioEngine {
     this.displayAnalyser.getByteFrequencyData(this.freq);
     this.displayAnalyser.getByteTimeDomainData(this.time);
     this.displayAnalyser.getFloatTimeDomainData(this.timeFloat);
+    // Pull raw (unsmoothed) FFT for the beat detector. Even when beatPath is
+    // 'smoothed' the cost is one extra getByteFrequencyData call; keeping
+    // both buffers fresh makes runtime toggling instant with no glitch.
+    if (this.beatAnalyser) this.beatAnalyser.getByteFrequencyData(this.beatFreq);
 
     const sampleRate = this.ctx.sampleRate;
     const dispBins = this.freq.length;
@@ -165,10 +210,14 @@ export class AudioEngine {
     rms = Math.sqrt(rms / this.timeFloat.length);
 
     // --- Bass-onset beat detection ---
-    // Same bass bins that drive the leftmost bars; no separate analyser, no schedule.
+    // Bass bin range 3..9 (~64-215Hz @ 44.1kHz/2048) shared by both paths.
+    // 'smoothed' reads from the displayAnalyser (v1.6-v1.8 behaviour).
+    // 'raw' reads from the dedicated beatAnalyser with smoothing=0 (v1.9),
+    // catching transients ~50-80ms earlier.
+    const beatSrc = this.beatPath === 'raw' && this.beatAnalyser ? this.beatFreq : this.freq;
     let bassMax = 0;
     for (let i = BASS_BIN_LO; i < BASS_BIN_HI; i++) {
-      if (this.freq[i] > bassMax) bassMax = this.freq[i];
+      if (beatSrc[i] > bassMax) bassMax = beatSrc[i];
     }
     const bassEnergy = bassMax / 255;
     const bassRise = bassEnergy - this.prevBassEnergy;

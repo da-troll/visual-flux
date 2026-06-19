@@ -12,7 +12,7 @@
   "build_time_hours": 2,
   "status": "complete",
   "features": [
-    "7 canvas2D visualizer modes — bars, waveform, spectrogram, radial, Lissajous, constellation, particles",
+    "7 canvas2D visualizer modes \u2014 bars, waveform, spectrogram, radial, Lissajous, constellation, particles",
     "Drag-drop MP3/WAV/OGG with jsmediatags ID3 extraction (title, artist, album art)",
     "Live microphone input with sensitivity control",
     "Spectral-flux beat detection + rolling-median BPM display",
@@ -20,7 +20,8 @@
     "Stem-band sliders (sub/bass/mid/treble) to shape visual response",
     "PNG screenshot + 5-second 9:16 WebM loop export via MediaRecorder",
     "Fullscreen mode with auto-hiding controls, aspect-ratio switcher (16:9 / 1:1 / 9:16 / 4:5)",
-    "Shareable permalink encodes mode + palette + aspect + bands into URL hash"
+    "Shareable permalink encodes mode + palette + aspect + bands into URL hash",
+    "v1.9: dual-analyser beat path A/B toggle (?beatpath=raw|smoothed) \u2014 raw reads onset off smoothing=0 analyser for ~50-80ms tighter sync"
   ],
   "live_url": "https://mvp.trollefsen.com/2026-05-19-visualizer/",
   "github_url": "https://github.com/da-troll/visual-flux",
