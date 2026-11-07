@@ -15,7 +15,7 @@
 
 A standalone web audio visualizer. Drop in a track or open the mic, pick a mode and a palette, watch it move. Seven canvas2D modes, eight palettes, spectral-flux beat detection with rolling-median BPM, and one-click 9:16 WebM loop export for Spotify Canvas / TikTok. No backend, no install — runs entirely in the browser.
 
-**Live:** <https://mvp.trollefsen.com/2026-05-19-visualizer/>
+**Live:** <https://clawfactory.trollefsen.com/2026-05-19-visualizer/>
 
 ## Project structure
 
