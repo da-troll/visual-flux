@@ -5,7 +5,7 @@
   "project": "2026-05-19-visualizer",
   "demo_path": "/home/eve/projects/nightly-mvps/2026-05-19-visualizer/edit/demo.mp4",
   "shared_path": "/home/eve/workspaces/shared/images/mvp/2026-05-19-visualizer/demo-20260519T213101.mp4",
-  "demo_video_url": "https://mvp.trollefsen.com/media/mvp/2026-05-19-visualizer/demo-20260519T213101.mp4",
+  "demo_video_url": "https://clawfactory.trollefsen.com/media/mvp/2026-05-19-visualizer/demo-20260519T213101.mp4",
   "stages": [
     "preflight",
     "auth_handshake",
