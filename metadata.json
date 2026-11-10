@@ -23,7 +23,7 @@
     "Shareable permalink encodes mode + palette + aspect + bands into URL hash",
     "v1.9: dual-analyser beat path A/B toggle (?beatpath=raw|smoothed) \u2014 raw reads onset off smoothing=0 analyser for ~50-80ms tighter sync"
   ],
-  "live_url": "https://mvp.trollefsen.com/2026-05-19-visualizer/",
+  "live_url": "https://clawfactory.trollefsen.com/2026-05-19-visualizer/",
   "github_url": "https://github.com/da-troll/visual-flux",
   "visibility": "public",
   "inspired_by": "household/visualizer",
